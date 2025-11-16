@@ -191,6 +191,12 @@ class EveNetEngine(L.LightningModule):
             self.seg_loss = seg_loss
             self.l.info(f"segmentation loss initialized")
 
+        self.seg_loss = None
+        if self.segmentation_cfg.include:
+            from evenet.network.loss.segmentation import loss as seg_loss
+            self.seg_loss = seg_loss
+            print(f"{self.__class__.__name__} segmentation loss initialized")
+
         self.gen_loss = None
         if self.generation_include:
             import evenet.network.loss.generation as gen_loss
@@ -217,6 +223,9 @@ class EveNetEngine(L.LightningModule):
         self.eval_metrics_every_n_epochs: int = global_config.options.Training.get("eval_metrics_every_n_epochs", 1)
         self.eval_metrics: bool = False
 
+        # only save loss during prediction
+        self.save_loss_predict: bool = self.config.options.get('prediction', {}).get('save_loss', False)
+
         ###### Progressive Training ######
         self.task_scheduler: Union[ProgressiveTaskScheduler, None] = None
         self.progressive_index = 0
@@ -232,94 +241,13 @@ class EveNetEngine(L.LightningModule):
         pass
 
     @time_decorator()
-    def shared_step(
-            self, batch: Any, batch_idx: int,
-            loss_head_dict: dict,
-            update_metric: bool = True
+    def calculate_loss(
+            self, inputs, outputs,
+            batch, device, loss_head_dict, update_metric, event_weight, batch_idx, schedules, batch_size,
     ):
-
-        batch_size = batch["x"].shape[0]
-        device = self.device
-        if self.apply_event_weight:
-            event_weight = batch.get("event_weight", None)
-        else:
-            event_weight = None
-
-        self.current_stage = self.task_scheduler.get_current_stage(self.current_epoch).get("name", "default")
-        current_parameters = self.task_scheduler.get_current_parameters(
-            epoch=self.current_epoch,
-            batch_idx=batch_idx,
-            batches_per_epoch=self.steps_per_epoch if self.training else self.steps_per_epoch_val,
-        )
-        task_weights = current_parameters["loss_weights"]
-        train_parameters = current_parameters["train_parameters"]
-
-        # logging training parameters
-        for name, val in train_parameters.items():
-            if not self.simplified_log:
-                if self.global_rank == 0:
-                    if self.training:
-                        self.log(f"progressive/train/{name}", val, prog_bar=False, sync_dist=False)
-                    else:
-                        self.log(f"progressive/val/{name}", val, prog_bar=False, sync_dist=True)
-
-        if self.simplified_log:
-            self.local_logger.log_real(
-                train_parameters,
-                step=self.current_step, epoch=self.current_epoch, batch=batch_idx,
-                training=self.training,
-                prefix="progressive"
-            )
-
-        inputs = {
-            key: value.to(device=device) for key, value in batch.items()
-        }
-
-        schedules = {k: v for (k, v) in self.model.schedule_flags}
-        # if self.training:
-        # Evaluate which tasks are active based on weights
-        task_gate = {
-            "generation": task_weights.get("generation-recon", 0) > 0,
-            "neutrino_generation": task_weights.get("generation-truth", 0) > 0,
-            "deterministic": (
-                                     task_weights.get("classification", 0)
-                                     + task_weights.get("regression", 0)
-                                     + task_weights.get("assignment", 0)
-                                     + task_weights.get("segmentation", 0)
-                             ) > 0,
-        }
-
-        # Combine schedule flags and weight gating
-        schedules = {
-            key: schedules[key] and task_gate.get(key, False)
-            for key in schedules
-        }
-
-        self.current_schedule = schedules
-
-        # logging schedules
-        for key, value in schedules.items():
-            if not self.simplified_log:
-                self.log(f"progressive/schedule-{key}", int(value), prog_bar=False, sync_dist=True)
-
-        if self.simplified_log:
-            self.local_logger.log_real(
-                schedules,
-                step=self.current_step, epoch=self.current_epoch, batch=batch_idx,
-                training=self.training,
-                prefix="progressive/schedule-"
-            )
-
-        outputs = self.model.shared_step(
-            batch=inputs,
-            batch_size=batch_size,
-            train_parameters=train_parameters,
-            schedules=[(key, value) for key, value in schedules.items()],
-        )
-
-
         loss_raw: dict[str, torch.Tensor] = {}
         loss_detailed_dict = {}
+
         if self.classification_cfg.include and outputs["classification"]:
             scaled_cls_loss = cls_step(
                 target_classification=batch[self.target_classification_key].to(device=device),
@@ -457,6 +385,99 @@ class EveNetEngine(L.LightningModule):
             loss_raw["segmentation"] = scaled_seg_loss
             loss_head_dict["segmentation"] = scaled_seg_loss
 
+        return loss_raw, loss_detailed_dict, ass_predicts
+
+
+    @time_decorator()
+    def shared_step(
+            self, batch: Any, batch_idx: int,
+            loss_head_dict: dict,
+            update_metric: bool = True
+    ):
+
+        batch_size = batch["x"].shape[0]
+        device = self.device
+        if self.apply_event_weight:
+            event_weight = batch.get("event_weight", None)
+        else:
+            event_weight = None
+
+        self.current_stage = self.task_scheduler.get_current_stage(self.current_epoch).get("name", "default")
+        current_parameters = self.task_scheduler.get_current_parameters(
+            epoch=self.current_epoch,
+            batch_idx=batch_idx,
+            batches_per_epoch=self.steps_per_epoch if self.training else self.steps_per_epoch_val,
+        )
+        task_weights = current_parameters["loss_weights"]
+        train_parameters = current_parameters["train_parameters"]
+
+        # logging training parameters
+        for name, val in train_parameters.items():
+            if not self.simplified_log:
+                if self.global_rank == 0:
+                    if self.training:
+                        self.log(f"progressive/train/{name}", val, prog_bar=False, sync_dist=False)
+                    else:
+                        self.log(f"progressive/val/{name}", val, prog_bar=False, sync_dist=False)
+
+        if self.simplified_log:
+            self.local_logger.log_real(
+                train_parameters,
+                step=self.current_step, epoch=self.current_epoch, batch=batch_idx,
+                training=self.training,
+                prefix="progressive"
+            )
+
+        inputs = {
+            key: value.to(device=device) for key, value in batch.items()
+        }
+
+        schedules = {k: v for (k, v) in self.model.schedule_flags}
+        # if self.training:
+        # Evaluate which tasks are active based on weights
+        task_gate = {
+            "generation": task_weights.get("generation-recon", 0) > 0,
+            "neutrino_generation": task_weights.get("generation-truth", 0) > 0,
+            "deterministic": (
+                                     task_weights.get("classification", 0)
+                                     + task_weights.get("regression", 0)
+                                     + task_weights.get("assignment", 0)
+                                     + task_weights.get("segmentation", 0)
+                             ) > 0,
+        }
+
+        # Combine schedule flags and weight gating
+        schedules = {
+            key: schedules[key] and task_gate.get(key, False)
+            for key in schedules
+        }
+
+        self.current_schedule = schedules
+
+        # logging schedules
+        for key, value in schedules.items():
+            if not self.simplified_log:
+                self.log(f"progressive/schedule-{key}", int(value), prog_bar=False, sync_dist=True)
+
+        if self.simplified_log:
+            self.local_logger.log_real(
+                schedules,
+                step=self.current_step, epoch=self.current_epoch, batch=batch_idx,
+                training=self.training,
+                prefix="progressive/schedule-"
+            )
+
+        outputs = self.model.shared_step(
+            batch=inputs,
+            batch_size=batch_size,
+            train_parameters=train_parameters,
+            schedules=[(key, value) for key, value in schedules.items()],
+        )
+
+        loss_raw, loss_detailed_dict, ass_predicts = self.calculate_loss(
+            inputs, outputs,
+            batch, device, loss_head_dict, update_metric, event_weight, batch_idx, schedules, batch_size,
+        )
 
         self.general_log.update(loss_detailed_dict, is_train=self.training)
 
@@ -696,16 +717,21 @@ class EveNetEngine(L.LightningModule):
             key: value.to(device=device) for key, value in batch.items()
         }
 
+        if self.apply_event_weight:
+            event_weight = batch.get("event_weight", None)
+        else:
+            event_weight = None
+
         outputs = self.model.shared_step(
             batch=inputs,
             batch_size=batch_size,
             train_parameters=None,
         )
-        # No loss calculation here, drop the output
-        outputs["generations"] = None
-        outputs["classification-noised"] = None
-        outputs['regression-noised'] = None
-        outputs.pop('alpha')
+        if not self.save_loss_predict:
+            outputs["generations"] = None
+            outputs["classification-noised"] = None
+            outputs['regression-noised'] = None
+            outputs.pop('alpha')
 
         if self.config.options.prediction.get('save_point_cloud', False):
             outputs["full_input_point_cloud"] = inputs['x']
@@ -738,7 +764,6 @@ class EveNetEngine(L.LightningModule):
             outputs['truth_segmentation-class'] = inputs['segmentation-class']
             outputs['truth_segmentation-mask'] = inputs[self.target_segmentation_data_mask_key]
 
-
         if self.truth_generation_cfg.include:
             outputs["neutrinos"] = {
                 "predict": {},
@@ -768,6 +793,17 @@ class EveNetEngine(L.LightningModule):
             for i in range(data_shape[-1]):
                 outputs["neutrinos"]["predict"][feature_names[i]] = generated_distribution[..., i]
                 outputs["neutrinos"]["target"][feature_names[i]] = inputs['x_invisible'][..., i]
+
+        if self.save_loss_predict:
+            _, loss_head_dict = self.prepare_heads_loss()
+
+            loss_raw, _, _ = self.calculate_loss(
+                inputs, outputs,
+                batch, device, loss_head_dict, update_metric=False, event_weight=event_weight, batch_idx=batch_idx,
+                schedules={}, batch_size=batch_size,
+            )
+
+            outputs['losses'] = loss_raw
 
         return outputs
 
@@ -1047,6 +1083,7 @@ class EveNetEngine(L.LightningModule):
 
         for logger in self.loggers:
             if isinstance(logger, LocalLogger):
+                print("val current stage:", self.current_stage)
                 logger.flush_metrics(stage=self.current_stage)
 
         self.l.info(f"[Epoch {self.current_epoch:03d}] ✅ Validation Complete")
