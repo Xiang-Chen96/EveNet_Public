@@ -21,6 +21,7 @@ from evenet.control.global_config import global_config
 from evenet.dataset.preprocess import process_event_batch, unflatten_dict
 import logging
 
+
 def make_process_fn(base_dir: Path):
     """Creates a partial function for batch preprocessing."""
     shape_metadata = json.load(open(base_dir / "shape_metadata.json"))
@@ -30,7 +31,7 @@ def make_process_fn(base_dir: Path):
         drop_column_prefix = None
 
     component_map = {
-#        "Classification": "classification",
+        #        "Classification": "classification",
         "Regression": "regression-",
         "Assignment": "assignments-",
         # "TruthGeneration": "event_generation-",
@@ -90,6 +91,7 @@ def prepare_datasets(
         process_event_batch_partial,
         platform_info,
         load_all_in_ram: bool = False,
+        base_val_dir: Path | None = None,
         predict: bool = False,
 ) -> tuple[Dataset, None, int, None] | tuple[Dataset, Dataset, int, int]:
     """
@@ -103,6 +105,7 @@ def prepare_datasets(
     val_start_index = int(len(parquet_files) * val_split[0])
     val_end_index = int(len(parquet_files) * val_split[1])
     dataset_limit = global_config.options.Dataset.dataset_limit
+    dataset_limit_val = global_config.options.Dataset.get("dataset_limit_apply_to_val_set", False)
 
     if predict:
         predict_ds, predict_count = register_dataset(
@@ -115,19 +118,40 @@ def prepare_datasets(
         return predict_ds, None, predict_count, None
 
     if not load_all_in_ram:
+
+        # only valid for not load_all_in_ram mode
+        parquet_val_files: list[str] = []
+        if base_val_dir is not None:
+            parquet_val_files = sorted(map(str, base_val_dir.glob("*.parquet")))
+            if len(parquet_val_files) == 0:
+                raise ValueError(f"No parquet files found in validation directory: {base_val_dir}")
+
         # No global shuffling — preserve file order
-        val_files = parquet_files[val_start_index:val_end_index]
-        train_files = parquet_files[:val_start_index] + parquet_files[val_end_index:]
+
+        if len(parquet_val_files) > 0:
+            val_files = parquet_val_files
+            train_files = parquet_files
+        else:
+            val_files = parquet_files[val_start_index:val_end_index]
+            train_files = parquet_files[:val_start_index] + parquet_files[val_end_index:]
 
         dataset_kwargs = {
             'process_event_batch_partial': process_event_batch_partial,
             'platform_info': platform_info,
-            "dataset_limit": dataset_limit,
-            "file_shuffling": True,
+            # "dataset_limit": dataset_limit,
+            # "file_shuffling": True,
         }
 
-        train_ds, train_count = register_dataset(train_files, **dataset_kwargs)
-        val_ds, val_count = register_dataset(val_files, **dataset_kwargs)
+        train_ds, train_count = register_dataset(train_files, **{
+            "file_shuffling": True,
+            "dataset_limit": dataset_limit,
+            **dataset_kwargs
+        })
+        val_ds, val_count = register_dataset(val_files, **{
+            "file_shuffling": False,
+            "dataset_limit": dataset_limit if dataset_limit_val else 1.0,
+            **dataset_kwargs
+        })
 
         return train_ds, val_ds, train_count, val_count
 
@@ -188,7 +212,6 @@ def prepare_datasets(
         )
 
         return train_ds, val_ds, train_ds.count(), val_ds.count()
-
 
 
 class EveNetTrainCallback(Callback):

@@ -179,13 +179,15 @@ def main(args: argparse.Namespace) -> None:
     )
 
     base_dir = Path(platform_info.data_parquet_dir)
+    base_val_dir = None if "data_parquet_val_dir" not in platform_info else Path(platform_info.data_parquet_val_dir)
 
     process_fn = make_process_fn(base_dir)
     train_ds, valid_ds, total_events, total_val_events = prepare_datasets(
-        base_dir,
-        process_fn,
-        platform_info,
-        args.load_all,
+        base_dir=base_dir,
+        process_event_batch_partial=process_fn,
+        platform_info=platform_info,
+        load_all_in_ram=args.load_all,
+        base_val_dir=base_val_dir,
         predict=False,
     )
 

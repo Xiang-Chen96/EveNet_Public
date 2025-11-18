@@ -239,6 +239,10 @@ Dataset:
   dataset_limit: 1.0
   normalization_file: "/pscratch/sd/a/avencast/Event_Level_Analysis/Pretrain_Parquet/normalization_files/PreTrain_norm.pkl"
   balance_file: null
+
+  # If dataset_limit_apply_to_val_set is True, both training and validation sets are limited to the fraction specified by dataset_limit.
+  # If False, only the training set is limited, and the validation set uses the full data in the specified val_split range.
+  dataset_limit_apply_to_val_set: False
   val_split: [ 0.7, 1.0 ]
 
 Metrics:
