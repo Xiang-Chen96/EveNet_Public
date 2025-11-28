@@ -210,12 +210,11 @@ the `.npz` dictionary in sync so the converter knows how many channels to expect
      --split_ratio 0.8,0.1,0.1 \
      --store_dir /path/to/output
    ```
-
+   
    - Use `--file` instead of `--files` when processing a single archive.
    - Set `-v/--verbose` to see detailed sanity-check output and saved file sizes.
 
    The converter reads the YAML to recover feature names, masks, and head activation flags, then emits:
-
     - `train.parquet`, `val.parquet`, and `test.parquet` containing flattened tensors (only for splits with data).
     - `shape_metadata.json` with the original shapes (e.g., `(18, 7)` for `x`).
     - `normalization.pt` with channel-wise statistics and class weights computed from the **training** split.
