@@ -1,14 +1,16 @@
 platform:
-  data_parquet_dir: <data_parquet_dir>
+  data_parquet_dir: out/
+  # this is optional, only needed if you have a separate validation directory
+  # data_parquet_val_dir: <data_parquet_val_dir>
   number_of_workers: 1 # Adjust based on your system
   resources_per_worker: {
     "CPU": 1,
     "GPU": 1,
   } # Adjust based on your system
-  batch_size: 4 # training batch size per worker
+  batch_size: 32 # training batch size per worker
   prefetch_batches: 1 # Number of batches to prefetch
   # Enable GPU if available and desired
-  use_gpu: true
+  use_gpu: true # I'm mac
 
 logger:
   wandb:
@@ -17,19 +19,19 @@ logger:
     tags: ["EveNet"]
     simplified: false # If true, all metrics will be saved locally and only final metrics will be logged to wandb
   local:
-    save_dir: <log_save_dir>
+    save_dir: ./train_log/logs
     name: *logger_name
     version: "v1"
 
 
 options:
-  default: options/options.yaml
+  default: configs/options.yaml
 
   # overwrites
   Training:
     total_epochs: 50 # total epochs for the whole training
     epochs: 10 # epochs for this run
-    model_checkpoint_save_path: <model_checkpoint_save_path>
+    model_checkpoint_save_path: ./train_log/checkpoints/
     # Path to a checkpoint to resume training from, or null to start fresh
     model_checkpoint_load_path: null
     # If you want to load a pre-trained model for fine-tuning, specify the path
@@ -42,13 +44,13 @@ options:
     # see more details in options/options.yaml
     Components:
       Classification:
-        include: true
+        include: false
 
       Regression:
         include: false
 
       Assignment:
-        include: false
+        include: true
 
       Segmentation:
         include: false
@@ -59,17 +61,17 @@ options:
         diffusion_steps: 2
 
       ReconGeneration:
-        include: true
+        include: false
         diffusion_steps: 2
 
       TruthGeneration:
-        include: true
+        include: false
         diffusion_steps: 2
 
     EarlyStopping:
       patience: 100
       min_delta: 0.0
-      monitor: "lr-body"
+      monitor: "val/loss"
       mode: "min"
       verbose: true
 
@@ -85,11 +87,11 @@ options:
 
   Dataset:
     dataset_limit: 1.0
-    normalization_file: <normalization_file> # Path to normalization file
+    normalization_file: ./out/normalization.pt # Path to normalization file
     val_split: [0.95, 1.0]
 
 network:
-  default: network/network-20M.yaml
+  default: configs/network-20M.yaml
 
   # remove feature drop
   Body:
@@ -103,12 +105,12 @@ network:
 
 event_info:
 #  default: event_info/pretrain.yaml
-  default: event_info/multi_process.yaml
+  default: configs/event_info.yaml
   # overwrites
   # ...
 
 resonance:
-  default: resonance/standard_model.yaml
+  default: configs/standard_model.yaml
 
   # overwrites
   # ...

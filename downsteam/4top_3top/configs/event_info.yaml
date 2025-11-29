@@ -1,35 +1,4 @@
 EXCLUDE:
-  Momentum: &Momentum
-    - pt
-    - eta
-    - phi
-
-  W_had: &W_had
-    q1: null
-    q2: null
-    SYMMETRY: [ q1, q2 ]
-
-  W_lep: &W_lep
-    l: null
-#    v: null
-
-  W_lep_plus: &W_lep_plus
-    l+: null
-#    v: null
-  W_lep_minus: &W_lep_minus
-    l-: null
-#    v: null
-
-  Z_had: &Z_had
-    q1: null
-    q2: null
-    SYMMETRY: [ q1, q2 ]
-
-  Z_lep: &Z_lep
-    l1: null
-    l2: null
-    SYMMETRY: [ l1, l2 ]
-
   top_had: &top_had
     b: null
     q1: null
@@ -40,11 +9,6 @@ EXCLUDE:
     b: null
     l: null
 #    v: null
-
-  a_had: &a_had
-    b1: null
-    b2: null
-    SYMMETRY: [ b1, b2 ]
 
 # ---------------------------------------------------
 # REQUIRED - INPUTS - List all inputs to EveNet here.
@@ -83,145 +47,20 @@ INPUTS:
 # REQUIRED - EVENT - Complete list of resonance particles and daughters.
 # ----------------------------------------------------------------------
 EVENT:
-  TTHadronics:
-    diagram: &TTHadronics
-      t1: *top_had
-      t2: *top_had
-      SYMMETRY: [ t1, t2 ]
-
-  TT1L:
-    diagram: &TT1L
-      t1: *top_had
-      t2: *top_lep
-
-  TT2L:
-    diagram: &TT2L
-      t1:
-        b: null
-        l+: null
-#        v: null
-      t2:
-        b: null
-        l-: null
-#        v: null
-
-  WJetsToQQ:
-    diagram:
-      W: *W_had
-
-  ZJetsToQQ:
-    diagram:
-      Z: *Z_had
-
-  ZJetsToLL:
-    diagram:
-      Z: *Z_lep
-
-  ZZ_4L:
-    diagram:
-      Z1: *Z_lep
-      Z2: *Z_lep
-      SYMMETRY: [ Z1, Z2 ]
-
-  ZZ_2L:
-    diagram:
-      Z1: *Z_lep
-      Z2: *Z_had
-
-  WW_1L:
-    diagram:
-      W1: *W_lep
-      W2: *W_had
-
-  WW_2L:
-    diagram:
-      W+: *W_lep_plus
-      W-: *W_lep_minus
-
-
-  WZ_1L:
-    diagram:
-      W: *W_lep
-      Z: *Z_had
-
-  WZ_2L:
-    diagram:
-      W: *W_had
-      Z: *Z_lep
-
-  WZ_3L:
-    diagram:
-      W: *W_lep
-      Z: *Z_lep
-
-  ttW_FullHadronics:
+  tttt_2lsc:
     diagram:
       t1: *top_had
       t2: *top_had
-      W: *W_had
-      SYMMETRY: [ t1, t2 ]
-  ttW_Leptonic:
-    diagram:
-      t1: *top_had
-      t2: *top_had
-      W: *W_lep
-      SYMMETRY: [ t1, t2 ]
-  ttW_tHtLWH:
-    diagram:
-      t1: *top_had
-      t2: *top_lep
-      W: *W_had
-  ttW_tHtLWL:
-    diagram:
-      t1: *top_had
-      t2: *top_lep
-      W: *W_lep
+      t3: *top_lep
+      t4: *top_lep
+      SYMMETRY: [ [t1, t2], [t3, t4] ]
 
-  ttZ_FullHadronics:
-    diagram:
-      t1: *top_had
-      t2: *top_had
-      Z: *Z_had
-      SYMMETRY: [ t1, t2 ]
-  ttZ_Leptonic:
-    diagram:
-      t1: *top_had
-      t2: *top_had
-      Z: *Z_lep
-      SYMMETRY: [ t1, t2 ]
-  ttZ_tHtLZH:
-    diagram:
-      t1: *top_had
-      t2: *top_lep
-      Z: *Z_had
-  ttZ_tHtLZL:
-    diagram:
-      t1: *top_had
-      t2: *top_lep
-      Z: *Z_lep
-
-
-  WJetsToLNu:
-    diagram:
-      W: *W_lep
-
-  HWW_WpLepWmLep:
-    diagram:
-      W+: *W_lep_plus
-      W-: *W_lep_minus
-  HWW_WpHadWmHad:
-    diagram:
-      W+: *W_had
-      W-: *W_had
-  HWW_WpHadWmLep:
-    diagram:
-      W+: *W_had
-      W-: *W_lep_minus
-  HWW_WpLepWmHad:
-    diagram:
-      W+: *W_lep_plus
-      W-: *W_had
-
+  #tttt_3l:
+  #  diagram:
+  #    t1: *top_had
+  #    t2: *top_lep
+  #    t3: *top_lep
+  #    SYMMETRY:  [ t2, t3]
 
 # -----------------------------------------------------------------------------
 # REQUIRED - SEGMENTATIONS - List of desired classes to predict from observables.
@@ -240,15 +79,15 @@ CLASSIFICATIONS:
   EVENT:
     - signal
 
-
+# !!! Important, the field to decide normalization (length should match cls label)
 CLASSLABEL:
   EVENT:
     signal:
-      - [ QCD, TT, ttW, ttZ, WJets, ZJets, WW, ZZ, WZ, HWW ]
+      - []
 
 
 RESONANCE_LABEL:
-  - [ "null", "t(had)", "t1l", "W(had)", "W(off-s)", "Z(had)", "Z(l)", "W(l)", "W(l,off-s)" ]
+  - [ "null", "t(had)", "t1l"]
 
 PARTICLE_PROPERTIES:
   - Energy
