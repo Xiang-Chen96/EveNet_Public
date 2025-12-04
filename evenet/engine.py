@@ -95,7 +95,6 @@ class EveNetEngine(L.LightningModule):
         self.target_assignment_key = 'assignments-indices'
         self.target_assignment_mask_key = 'assignments-mask'
 
-
         ###### Initialize Model Components Configs #####
         self.component_cfg = global_config.options.Training.Components
 
@@ -112,14 +111,13 @@ class EveNetEngine(L.LightningModule):
         self.target_segmentation_reg_key = 'segmentation-momentum'
         self.target_segmentation_data_mask_key = 'segmentation-data'
 
-
         ###### Initialize Normalizations and Balance #####
         self.normalization_dict: dict = torch.load(self.config.options.Dataset.normalization_file)
         self.balance_dict: dict = self.normalization_dict
         if self.config.options.Dataset.get("balance_file", None) is not None:
             self.balance_dict = torch.load(self.config.options.Dataset.balance_file)
 
-        self.class_weight=None
+        self.class_weight = None
         if self.classification_cfg.include:
             self.class_weight = self.balance_dict["class_balance"]
 
@@ -364,20 +362,20 @@ class EveNetEngine(L.LightningModule):
             seg_target_mask = batch[self.target_segmentation_data_mask_key].to(device=device)
             class_weight = self.segmentation_cls_balance.to(device=device)
             scaled_seg_loss = seg_step(
-                target_classification = seg_targets_cls,
-                target_mask = seg_target_mask,
-                predict_classification = outputs["segmentation-cls"],
-                predict_mask= outputs["segmentation-mask"],
+                target_classification=seg_targets_cls,
+                target_mask=seg_target_mask,
+                predict_classification=outputs["segmentation-cls"],
+                predict_mask=outputs["segmentation-mask"],
                 point_cloud_mask=inputs['x_mask'],
                 seg_loss_fn=self.seg_loss,
                 class_weight=class_weight,
                 class_label=inputs["subprocess_id"],
                 metrics=self.segmentation_metrics_train if self.training else self.segmentation_metrics_valid,
-                loss_dict = loss_head_dict,
-                mask_loss_scale = self.segmentation_cfg.mask_loss_scale,
-                dice_loss_scale =  self.segmentation_cfg.dice_loss_scale,
-                cls_loss_scale = self.segmentation_cfg.cls_loss_scale,
-                loss_name = "segmentation",
+                loss_dict=loss_head_dict,
+                mask_loss_scale=self.segmentation_cfg.mask_loss_scale,
+                dice_loss_scale=self.segmentation_cfg.dice_loss_scale,
+                cls_loss_scale=self.segmentation_cfg.cls_loss_scale,
+                loss_name="segmentation",
                 update_metrics=update_metric,
                 event_weight=event_weight,
                 aux_outputs=outputs.get("segmentation-aux", None)
@@ -386,7 +384,6 @@ class EveNetEngine(L.LightningModule):
             loss_head_dict["segmentation"] = scaled_seg_loss
 
         return loss_raw, loss_detailed_dict, ass_predicts
-
 
     @time_decorator()
     def shared_step(
@@ -727,7 +724,18 @@ class EveNetEngine(L.LightningModule):
             batch_size=batch_size,
             train_parameters=None,
         )
-        if not self.save_loss_predict:
+
+        if self.save_loss_predict:
+            _, loss_head_dict = self.prepare_heads_loss()
+
+            loss_raw, _, _ = self.calculate_loss(
+                inputs, outputs,
+                batch, device, loss_head_dict, update_metric=False, event_weight=event_weight, batch_idx=batch_idx,
+                schedules={}, batch_size=batch_size,
+            )
+
+            outputs['losses'] = loss_raw
+        else:
             outputs["generations"] = None
             outputs["classification-noised"] = None
             outputs['regression-noised'] = None
@@ -793,17 +801,6 @@ class EveNetEngine(L.LightningModule):
             for i in range(data_shape[-1]):
                 outputs["neutrinos"]["predict"][feature_names[i]] = generated_distribution[..., i]
                 outputs["neutrinos"]["target"][feature_names[i]] = inputs['x_invisible'][..., i]
-
-        if self.save_loss_predict:
-            _, loss_head_dict = self.prepare_heads_loss()
-
-            loss_raw, _, _ = self.calculate_loss(
-                inputs, outputs,
-                batch, device, loss_head_dict, update_metric=False, event_weight=event_weight, batch_idx=batch_idx,
-                schedules={}, batch_size=batch_size,
-            )
-
-            outputs['losses'] = loss_raw
 
         return outputs
 
@@ -1077,7 +1074,6 @@ class EveNetEngine(L.LightningModule):
                 metrics_train=self.segmentation_metrics_train,
                 logger=self.logger.experiment
             )
-
 
         self.general_log.finalize_epoch(is_train=False)
 
