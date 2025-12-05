@@ -49,11 +49,11 @@ INPUTS:
 EVENT:
   tttt_2lsc:
     diagram:
-      t1: *top_had
-      t2: *top_had
-      t3: *top_lep
-      t4: *top_lep
-      SYMMETRY: [ [t1, t2], [t3, t4] ]
+      th1: *top_had
+      th2: *top_had
+      tl1: *top_lep
+      tl2: *top_lep
+      SYMMETRY: [ [th1, th2], [tl1, tl2] ]
 
   #tttt_3l:
   #  diagram:

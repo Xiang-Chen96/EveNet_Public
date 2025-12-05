@@ -1,9 +1,8 @@
 # --------------------
 # Resonance Type - List of valid resonance particle (w. different decay topology)
 # --------------------
-
 HadronicTop:
-  t/bqq:
+  th/bqq:
     Mass: 172.76
     Spin: 0.5
     nProduct_BJet: 1
@@ -14,31 +13,12 @@ HadronicTop:
     segment_tag: 1
 
 LeptonicTop:
-  t/bl+:
+  tl/bl:
     Mass: 172.76
     Spin: 0.5
     nProduct_BJet: 1
     nProduct_Jet: 1
     nProduct_Lepton: 1
-    Product_LeptonCharge: 1
     # this is for segmentation head, starting from 1 (0 is reserved for no decay)
     segment_tag: 2
 
-  t/bl-:
-    Mass: 172.76
-    Spin: 0.5
-    nProduct_BJet: 1
-    nProduct_Jet: 1
-    nProduct_Lepton: 1
-    Product_LeptonCharge: -1
-    # this is for segmentation head, starting from 1 (0 is reserved for no decay)
-    segment_tag: 2
-
-  t/bl:
-    Mass: 172.76
-    Spin: 0.5
-    nProduct_BJet: 1
-    nProduct_Jet: 1
-    nProduct_Lepton: 1
-    # this is for segmentation head, starting from 1 (0 is reserved for no decay)
-    segment_tag: 2

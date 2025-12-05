@@ -1,5 +1,5 @@
 platform:
-  data_parquet_dir: out/
+  data_parquet_dir: /lustre/collider/chenxiang/ATLAS/top_reco/EveNet_Public/downsteam/4top_3top/out_test/
   # this is optional, only needed if you have a separate validation directory
   # data_parquet_val_dir: <data_parquet_val_dir>
   number_of_workers: 1 # Adjust based on your system
@@ -7,7 +7,7 @@ platform:
     "CPU": 1,
     "GPU": 1,
   } # Adjust based on your system
-  batch_size: 256 # training batch size per worker
+  batch_size: 2048 # training batch size per worker
   prefetch_batches: 1 # Number of batches to prefetch
   # Enable GPU if available and desired
   use_gpu: true # I'm mac
@@ -19,13 +19,25 @@ logger:
     tags: ["EveNet"]
     simplified: false # If true, all metrics will be saved locally and only final metrics will be logged to wandb
   local:
-    save_dir: ./train_log/logs
+    save_dir: /lustre/collider/chenxiang/ATLAS/top_reco/EveNet_Public/downsteam/4top_3top/train_log/logs
     name: *logger_name
     version: "v1"
 
 
 options:
   default: configs/options.yaml
+  
+  # For prediction Only
+  prediction:
+    # The directory where the prediction data is saved
+    output_dir: /lustre/collider/chenxiang/ATLAS/top_reco/EveNet_Public/downsteam/4top_3top/out_test
+    # The filename of the prediction data
+    filename: test_dataset
+    # if you want to save the point cloud (reconstructed particles) during prediction
+    save_point_cloud: true
+    # if you want to save extra features from the input data
+    extra_save: []
+
 
   # overwrites
   Training:
@@ -38,9 +50,9 @@ options:
 
     model_checkpoint_save_path: ./train_log/checkpoints/
     # Path to a checkpoint to resume training from, or null to start fresh
-    model_checkpoint_load_path: null
+    model_checkpoint_load_path: /lustre/collider/chenxiang/ATLAS/top_reco/EveNet_Public/downsteam/4top_3top/train_log/checkpoints/last-v1.ckpt
     # If you want to load a pre-trained model for fine-tuning, specify the path
-    pretrain_model_load_path: ./checkpoints.20M.a4.last.ckpt
+    pretrain_model_load_path: null
 
     diffusion_every_n_epochs: 4 # how often to run diffusion
     diffusion_every_n_steps: 1 # how often to run diffusion inside the valid epoch
@@ -109,7 +121,7 @@ options:
 
   Dataset:
     dataset_limit: 1.0
-    normalization_file: ./out/normalization.pt # Path to normalization file
+    normalization_file: /lustre/collider/chenxiang/ATLAS/top_reco/EveNet_Public/downsteam/4top_3top/out_test/normalization.pt # Path to normalization file
     val_split: [0.95, 1.0]
 
 network:
