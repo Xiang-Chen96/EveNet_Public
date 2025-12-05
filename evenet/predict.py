@@ -29,7 +29,7 @@ def predict_func(cfg):
         prefetch_batches=cfg['prefetch_batches'],
     )
 
-    global_config.load_yaml(cfg['global_config_path'])
+    global_config.load_yaml(cfg['global_config_path'], current_dir=cfg['current_dir'])
 
     if global_config.options.Training.model_checkpoint_load_path:
         if Path(global_config.options.Training.model_checkpoint_load_path).is_dir():
