@@ -252,12 +252,20 @@ def process_dict(
 
     # ==> CLASSIFICATION
     if len(unique_process_ids) > 0:
-        # TODO: Fix me
-        proc_info = global_config.process_info[process]
+        class_counts = np.bincount(pdict['classification'], weights=weights)
+        unweighted_class_counts = np.bincount(pdict['classification'])
 
-        class_counts = np.zeros(len(unique_process_ids), dtype=np.float32)
-        class_counts[proc_info["process_id"]] = np.sum(weights)
-
+        lines = [
+            "===============================================",
+            " idx | Class          | Weighted Sum | Events ",
+            "==============================================="
+        ]
+        for idx, name in enumerate(unique_process_ids):
+            lines.append(f"{idx:3d} | {name:14s} | {class_counts[idx]:12.3f} | {unweighted_class_counts[idx]:6d}")
+        lines.append("===============================================")
+        table_text = "\n".join(lines)
+        # PRINT ELEGANTLY
+        logger.info("\n%s", table_text)
     else:
         class_counts = None  # or np.array([])
 
