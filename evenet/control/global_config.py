@@ -146,6 +146,7 @@ class Config:
         # Apply the resolver
         for section, keys in path_fields.items():
             if section not in self._global_config:
+                print(f"==> {section} not in global_config")
                 continue
 
             d = get_nested(self._global_config, section)
