@@ -153,7 +153,7 @@ class Config:
 
         # Apply the resolver
         for section, keys in path_fields.items():
-            if has_path(self._global_config, section):
+            if not has_path(self._global_config, section):
                 print(f"==> {section} not in global_config")
                 continue
 
