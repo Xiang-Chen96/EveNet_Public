@@ -375,7 +375,7 @@ class EveNetModel(nn.Module):
             num_point_cloud = x['num_sequential_vectors'].unsqueeze(-1)  # (batch_size, 1)
 
         B, _, num_features = input_point_cloud.shape
-        if 'x_invisible' in x:
+        if 'x_invisible' in x and self.include_neutrino_generation:
             invisible_point_cloud = x['x_invisible']
             pad_size = self.invisible_padding
 
