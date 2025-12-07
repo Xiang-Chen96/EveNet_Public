@@ -99,7 +99,6 @@ class Config:
                 else:
                     self._global_config[section] = content
 
-
         required = self.skip_keys
         missing = [key for key in required if key not in self._global_config]
         if missing:
@@ -144,8 +143,20 @@ class Config:
                 cfg = cfg[p]
             return cfg
 
+        def has_path(cfg, path: str):
+            node = cfg
+            for key in path.split("."):
+                if key not in node:
+                    return False
+                node = node[key]
+            return True
+
         # Apply the resolver
         for section, keys in path_fields.items():
+            if not has_path(self._global_config, section):
+                print(f"==> {section} not in global_config")
+                continue
+
             d = get_nested(self._global_config, section)
             for k in keys:
                 resolve_path(d, k)

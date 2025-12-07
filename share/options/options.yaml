@@ -4,6 +4,7 @@ Training:
   # Trainer will stop at this epoch number
   epochs: 100
 
+  model_checkpoint_save_top_k: 5 # number of best model checkpoints to save
   model_checkpoint_save_path: "."
   model_checkpoint_load_path: null
 
@@ -81,7 +82,7 @@ Training:
       optimizer_type: "lion"
       warm_up: true
       loss_scale: 1.0 # loss coefficient
-      include: true # whether to build in network
+      include: false # whether to build in network
       weight_decay: *wd
       decoupled_weight_decay: *decouple_wd
       freeze:

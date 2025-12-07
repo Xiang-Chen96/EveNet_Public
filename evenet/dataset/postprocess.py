@@ -258,7 +258,7 @@ class PostProcessor:
         record = {
             "x": masked_stats(x.reshape(-1, x.shape[-1])),
             "conditions": masked_stats(conditions),
-            "input_num": masked_stats(num_vectors.reshape(-1, num_vectors.shape[-1])),
+            "input_num": masked_stats(num_vectors),
         }
 
         # ---- Auto-detect optional components ----
@@ -390,8 +390,8 @@ class PostProcessor:
             output["segment_regression_std"] = torch.tensor(merged["segment_regression"]["std"])
 
         if first.use_invisible:
-            output["invisible_mean"] = {"Source": torch.tensor(merged["invisible"]["mean"])}
-            output["invisible_std"] = {"Source": torch.tensor(merged["invisible"]["std"])}
+            output["invisible_mean"] = {"Source": torch.tensor(merged["invisible"]["mean"], dtype=torch.float32)}
+            output["invisible_std"] = {"Source": torch.tensor(merged["invisible"]["std"], dtype=torch.float32)}
 
         # Save
         if saved_results_path:
