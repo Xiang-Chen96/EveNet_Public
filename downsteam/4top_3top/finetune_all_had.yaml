@@ -1,0 +1,138 @@
+platform:
+  data_parquet_dir: out_allhad/
+  # this is optional, only needed if you have a separate validation directory
+  # data_parquet_val_dir: <data_parquet_val_dir>
+  number_of_workers: 1 # Adjust based on your system
+  resources_per_worker: {
+    "CPU": 1,
+    "GPU": 1,
+  } # Adjust based on your system
+  batch_size: 256 # training batch size per worker
+  prefetch_batches: 1 # Number of batches to prefetch
+  # Enable GPU if available and desired
+  use_gpu: true # I'm mac
+
+logger:
+  wandb:
+    project: "EveNet"
+    run_name: &logger_name "Pretrain_tttt_allhad"
+    tags: ["EveNet"]
+    simplified: false # If true, all metrics will be saved locally and only final metrics will be logged to wandb
+  local:
+    save_dir: ./train_log_allhad/logs
+    name: *logger_name
+    version: "v1"
+
+
+options:
+  default: configs/options.yaml
+
+  # overwrites
+  Training:
+    total_epochs: 50 # total epochs for the whole training
+    epochs: 50 # epochs for this run
+    learning_rate: &lr 0.0001
+    learning_rate_body: &lr_body 0.00001
+    weight_decay: &wd 0.001
+    optimizer_type_base: &opt "AdamW"
+
+    model_checkpoint_save_path: ./train_log_allhad/checkpoints/
+    # Path to a checkpoint to resume training from, or null to start fresh
+    model_checkpoint_load_path: null
+    # If you want to load a pre-trained model for fine-tuning, specify the path
+    pretrain_model_load_path: ./checkpoints.20M.a4.last.ckpt
+
+    diffusion_every_n_epochs: 4 # how often to run diffusion
+    diffusion_every_n_steps: 1 # how often to run diffusion inside the valid epoch
+    eval_metrics_every_n_epochs: 1 # how often to run evaluation metrics
+
+    # see more details in options/options.yaml
+    Components:
+      GlobalEmbedding:
+        learning_rate: *lr_body
+        weight_decay: *wd
+        optimizer_type: "AdamW"
+      PET:
+        learning_rate: *lr_body
+        weight_decay: *wd
+        optimizer_type: "AdamW"
+      ObjectEncoder:
+        learning_rate: *lr_body
+        weight_decay: *wd
+        optimizer_type: "AdamW"
+
+      Classification:
+        include: false
+
+      Regression:
+        include: false
+
+      Assignment:
+        include: true
+        warm_up: true
+        learning_rate: *lr
+        weight_decay: *wd
+        optimizer_type: *opt
+
+      Segmentation:
+        include: false
+        use_full_mask: true
+
+      GlobalGeneration:
+        include: false
+        diffusion_steps: 2
+
+      ReconGeneration:
+        include: false
+        diffusion_steps: 2
+
+      TruthGeneration:
+        include: false
+        diffusion_steps: 2
+
+    EarlyStopping:
+      patience: 100
+      min_delta: 0.0
+      monitor: "val/loss"
+      mode: "min"
+      verbose: true
+
+    EMA:
+      enable: true               # Enable or disable EMA
+      decay: 0.999               # EMA decay rate
+      start_epoch: 0             # Start updating EMA after this epoch
+      update_every_n_steps: 1    # Update EMA every N steps
+
+      replace_model_after_load: true    # After loading checkpoint, copy EMA weights into model
+      replace_model_at_end: false         # At training end, copy EMA weights into model (will not save EMA weights)
+
+
+  Dataset:
+    dataset_limit: 1.0
+    normalization_file: ./out_allhad/normalization.pt # Path to normalization file
+    val_split: [0.95, 1.0]
+
+network:
+  default: configs/network-20M.yaml
+
+  # remove feature drop
+  Body:
+    PET:
+      feature_drop: 0.0
+  ReconGeneration:
+    feature_drop: 0.0
+  TruthGeneration:
+    feature_drop: 0.0
+
+
+event_info:
+#  default: event_info/pretrain.yaml
+  default: configs/event_info_allhad.yaml
+  # overwrites
+  # ...
+
+resonance:
+  default: configs/standard_model.yaml
+
+  # overwrites
+  # ...
